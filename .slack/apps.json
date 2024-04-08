@@ -1,0 +1,11 @@
+{
+  "apps": {
+    "T010G61JFL5": {
+      "app_id": "A06T0E02GVC",
+      "IsDev": false,
+      "team_domain": "culturebooster",
+      "team_id": "T010G61JFL5"
+    }
+  },
+  "default": "culturebooster"
+}
