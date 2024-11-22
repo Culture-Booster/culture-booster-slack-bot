@@ -36,8 +36,19 @@ const SetupWorkflowForm = TicketGeneratorWorkflow.addStep(
     description: ":thinking_face: What's on your mind?",
     interactivity: TicketGeneratorWorkflow.inputs.interactivity,
     fields: {
-      required: ["messageTitle"],
+      required: ["type", "messageTitle"],
       elements: [
+        {
+          name: "type",
+          title: "Ticket Type",
+          type: Schema.types.array,
+          maxItems: 1,
+          items: {
+            type: Schema.types.string,
+            enum: ["Ticket", "Suggestion", "Bug"],
+          },
+          default: ["Ticket"],
+        },
         {
           name: "messageTitle",
           title: "Short title for your request",
@@ -61,6 +72,7 @@ const SetupWorkflowForm = TicketGeneratorWorkflow.addStep(
  * See `/functions/ticket_generator.ts` for more information.
  */
 TicketGeneratorWorkflow.addStep(TicketGeneratorSetupFunction, {
+  type: SetupWorkflowForm.outputs.fields.type,
   title: SetupWorkflowForm.outputs.fields.messageTitle,
   message: SetupWorkflowForm.outputs.fields.messageInput,
   author: TicketGeneratorWorkflow.inputs.interactivity.interactor.id,

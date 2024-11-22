@@ -14,6 +14,13 @@ export const TicketGeneratorSetupFunction = DefineFunction({
   source_file: "functions/ticket_generator.ts",
   input_parameters: {
     properties: {
+      type: {
+        type: Schema.types.array,
+        description: "List of ticket types",
+        items: {
+          type: Schema.types.string,
+        },
+      },
       title: {
         type: Schema.types.string,
         description: "The ticket title",
@@ -28,26 +35,40 @@ export const TicketGeneratorSetupFunction = DefineFunction({
           "The user ID of the person who created the welcome message",
       },
     },
-    required: ["title"],
+    required: ["title", "type"],
   },
 });
 
 export default SlackFunction(
   TicketGeneratorSetupFunction,
   async ({ inputs, client, env }) => {
-    const { title, message, author } = inputs;
+    const { type, title, message, author } = inputs;
 
     // Create a Notion client for creating pages and blocks
     const notion = new Client({
       auth: env.NOTION_SECRET,
     });
 
+    const ticketType = type[0];
+
     // Generate the task in Notion
     const task = await notion.pages.create({
-      icon: {
-        type: "external",
-        external: { url: "https://www.notion.so/icons/ticket_orange.svg" },
-      },
+      icon: ticketType === "Ticket"
+        ? {
+          type: "external",
+          external: { url: "https://www.notion.so/icons/ticket_orange.svg" },
+        }
+        : ticketType === "Bug"
+        ? {
+          type: "external",
+          external: { url: "https://www.notion.so/icons/bug_red.svg" },
+        }
+        : {
+          type: "external",
+          external: {
+            url: "https://www.notion.so/icons/light-bulb_yellow.svg",
+          },
+        },
       "parent": {
         "type": "database_id",
         "database_id": env.NOTION_DATABASE_ID,
@@ -65,11 +86,23 @@ export default SlackFunction(
           name: "Engineering",
           color: "purple",
         }],
-        "notion%3A%2F%2Ftasks%2Ftags_property": [{
-          id: "=l~q",
-          name: "Ticket",
-          color: "gray",
-        }],
+        "notion%3A%2F%2Ftasks%2Ftags_property": [
+          ticketType === "Ticket"
+            ? {
+              id: "=l~q",
+              name: "Ticket",
+              color: "gray",
+            }
+            : ticketType === "Bug"
+            ? {
+              name: "Bug",
+              color: "red",
+            }
+            : {
+              name: "Feature",
+              color: "purple",
+            },
+        ],
         "notion%3A%2F%2Ftasks%2Fdue_date_property": {
           start: new Date().toISOString(),
         },
@@ -126,10 +159,12 @@ export default SlackFunction(
 
     // Send a message to the appropriate channel to notify them of a new ticket
     const notificationMessage = await client.chat.postMessage({
-      channel: env.ENGINEERING_CHANNEL,
-      text: `<!here> <@${author}> created a new ticket: ${
-        (task as PageObjectResponse).url
-      }`,
+      channel: ticketType === "Bug"
+        ? env.ENGINEERING_CHANNEL
+        : env.TEAM_CHANNEL,
+      text: `${
+        ticketType === "Bug" || ticketType === "Ticket" ? "<!here> " : ""
+      }<@${author}> created a new ticket: ${(task as PageObjectResponse).url}`,
       user: author,
     });
 
